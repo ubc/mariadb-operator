@@ -3585,6 +3585,89 @@ spec:
                             description: Enabled is a flag to enable KubernetesAuth
                             type: boolean
                         type: object
+                      lifecycle:
+                        description: Lifecycle are actions that the management system
+                          should take in response to container lifecycle events.
+                        properties:
+                          postStart:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                          preStop:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                        type: object
                       livenessProbe:
                         description: LivenessProbe to be used in the Container.
                         properties:
@@ -4093,6 +4176,89 @@ spec:
                         - Never
                         - IfNotPresent
                         type: string
+                      lifecycle:
+                        description: Lifecycle are actions that the management system
+                          should take in response to container lifecycle events.
+                        properties:
+                          postStart:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                          preStop:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                        type: object
                       livenessProbe:
                         description: LivenessProbe to be used in the Container.
                         properties:
@@ -4720,6 +4886,89 @@ spec:
                   - image
                   type: object
                 type: array
+              lifecycle:
+                description: Lifecycle are actions that the management system should
+                  take in response to container lifecycle events.
+                properties:
+                  postStart:
+                    description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                    properties:
+                      exec:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                        properties:
+                          command:
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                        type: object
+                      httpGet:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                        properties:
+                          host:
+                            type: string
+                          path:
+                            type: string
+                          port:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
+                          scheme:
+                            description: URIScheme identifies the scheme used for
+                              connection to a host for Get actions
+                            type: string
+                        required:
+                        - port
+                        type: object
+                      sleep:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                        properties:
+                          seconds:
+                            format: int64
+                            type: integer
+                        type: object
+                    type: object
+                  preStop:
+                    description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                    properties:
+                      exec:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                        properties:
+                          command:
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                        type: object
+                      httpGet:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                        properties:
+                          host:
+                            type: string
+                          path:
+                            type: string
+                          port:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
+                          scheme:
+                            description: URIScheme identifies the scheme used for
+                              connection to a host for Get actions
+                            type: string
+                        required:
+                        - port
+                        type: object
+                      sleep:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                        properties:
+                          seconds:
+                            format: int64
+                            type: integer
+                        type: object
+                    type: object
+                type: object
               livenessProbe:
                 description: LivenessProbe to be used in the Container.
                 properties:
@@ -5919,6 +6168,89 @@ spec:
                             description: Enabled is a flag to enable KubernetesAuth
                             type: boolean
                         type: object
+                      lifecycle:
+                        description: Lifecycle are actions that the management system
+                          should take in response to container lifecycle events.
+                        properties:
+                          postStart:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                          preStop:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                        type: object
                       livenessProbe:
                         description: LivenessProbe to be used in the Container.
                         properties:
@@ -6309,6 +6641,89 @@ spec:
                         - Never
                         - IfNotPresent
                         type: string
+                      lifecycle:
+                        description: Lifecycle are actions that the management system
+                          should take in response to container lifecycle events.
+                        properties:
+                          postStart:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                          preStop:
+                            description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                            properties:
+                              exec:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                                properties:
+                                  command:
+                                    items:
+                                      type: string
+                                    type: array
+                                    x-kubernetes-list-type: atomic
+                                type: object
+                              httpGet:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                                properties:
+                                  host:
+                                    type: string
+                                  path:
+                                    type: string
+                                  port:
+                                    anyOf:
+                                    - type: integer
+                                    - type: string
+                                    x-kubernetes-int-or-string: true
+                                  scheme:
+                                    description: URIScheme identifies the scheme used
+                                      for connection to a host for Get actions
+                                    type: string
+                                required:
+                                - port
+                                type: object
+                              sleep:
+                                description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                                properties:
+                                  seconds:
+                                    format: int64
+                                    type: integer
+                                type: object
+                            type: object
+                        type: object
                       livenessProbe:
                         description: LivenessProbe to be used in the Container.
                         properties:
@@ -6998,6 +7413,15 @@ spec:
                               This threshold applies only to error codes not identified as recoverable by the operator.
                               Errors identified as recoverable will trigger the recovery process immediately.
                               It defaults to 5 minutes.
+                            type: string
+                          minHealthyDuration:
+                            description: |-
+                              MinHealthyDuration is the minimum duration the replica must report no replication errors
+                              (Last_IO_Errno == 0 and Last_SQL_Errno == 0) before the recovery is declared successful.
+                              Any error observed during the verification window resets the timer.
+                              This guards against backup-vs-binlog drift where the SQL thread fails on the first event
+                              applied after START SLAVE, which can otherwise be missed by a single-shot status check.
+                              It defaults to 30 seconds.
                             type: string
                         required:
                         - enabled
@@ -9461,6 +9885,89 @@ spec:
                     - NodePort
                     - LoadBalancer
                     type: string
+                type: object
+              lifecycle:
+                description: Lifecycle are actions that the management system should
+                  take in response to container lifecycle events.
+                properties:
+                  postStart:
+                    description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                    properties:
+                      exec:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                        properties:
+                          command:
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                        type: object
+                      httpGet:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                        properties:
+                          host:
+                            type: string
+                          path:
+                            type: string
+                          port:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
+                          scheme:
+                            description: URIScheme identifies the scheme used for
+                              connection to a host for Get actions
+                            type: string
+                        required:
+                        - port
+                        type: object
+                      sleep:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                        properties:
+                          seconds:
+                            format: int64
+                            type: integer
+                        type: object
+                    type: object
+                  preStop:
+                    description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#lifecyclehandler-v1-core.'
+                    properties:
+                      exec:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#execaction-v1-core.'
+                        properties:
+                          command:
+                            items:
+                              type: string
+                            type: array
+                            x-kubernetes-list-type: atomic
+                        type: object
+                      httpGet:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#httpgetaction-v1-core.'
+                        properties:
+                          host:
+                            type: string
+                          path:
+                            type: string
+                          port:
+                            anyOf:
+                            - type: integer
+                            - type: string
+                            x-kubernetes-int-or-string: true
+                          scheme:
+                            description: URIScheme identifies the scheme used for
+                              connection to a host for Get actions
+                            type: string
+                        required:
+                        - port
+                        type: object
+                      sleep:
+                        description: 'Refer to the Kubernetes docs: https://kubernetes.io/docs/reference/generated/kubernetes-api/v1.35/#sleepaction-v1-core'
+                        properties:
+                          seconds:
+                            format: int64
+                            type: integer
+                        type: object
+                    type: object
                 type: object
               livenessProbe:
                 description: LivenessProbe to be used in the Container.
