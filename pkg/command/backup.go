@@ -551,22 +551,16 @@ func (b *BackupCommand) MariadbBinlog(mariadb *mariadbv1alpha1.MariaDB) (*Comman
 }
 
 func (b *BackupCommand) newBackupFile() string {
-	var fileName string
-	if b.Compression == mariadbv1alpha1.CompressNone {
-		fileName = fmt.Sprintf(
-			"backup.$(date -u +'%s').sql",
-			"%Y-%m-%dT%H:%M:%SZ",
-		)
-	} else {
-		// Use standard extension format: .sql.gz or .sql.bz2
-		// This allows tools like gunzip to recognize the file format
-		ext, _ := b.Compression.Extension()
-		fileName = fmt.Sprintf(
-			"backup.$(date -u +'%s').sql.%s",
-			"%Y-%m-%dT%H:%M:%SZ",
-			ext,
-		)
-	}
+	// Always emit the plain ".sql" name from the dump container regardless of compression.
+	// The compression extension (.gz, .bz2) is appended later by the operator-backup container
+	// when it actually compresses the file. Decoupling the name from compression state means the
+	// presence of "backup.<ts>.sql.gz" on disk is an unambiguous "compress succeeded" signal,
+	// which makes the compress step idempotent across container restarts and prevents nested
+	// compression layers when the operator container is restarted by the kubelet.
+	fileName := fmt.Sprintf(
+		"backup.$(date -u +'%s').sql",
+		"%Y-%m-%dT%H:%M:%SZ",
+	)
 	return filepath.Join(b.Path, fileName)
 }
 
