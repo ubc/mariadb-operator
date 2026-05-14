@@ -30,6 +30,34 @@ var (
 	ErrWaitReplicaTimeout = errors.New("timeout waiting for replica to be synced")
 )
 
+// MariaDB server-side error codes the operator inspects to drive recovery
+// decisions. Source: MariaDB server error reference. Defined here (rather than
+// imported) because the go-sql-driver/mysql package does not export them.
+const (
+	// ErrCodeMasterInfo is `ER_MASTER_INFO` (1201) — "Could not initialize
+	// master info structure for '<connection_name>'". Returned by CHANGE
+	// MASTER TO when the in-memory master_info structure for the named
+	// replication channel cannot be (re)bound, typically because residual
+	// on-disk state (`master.info`, `relay-log.info`) is truncated or
+	// inconsistent from a previous half-completed switchover. Recovery is
+	// `RESET SLAVE ALL` on the affected connection followed by retry.
+	ErrCodeMasterInfo uint16 = 1201
+)
+
+// IsMySQLErrorCode reports whether err is a *mysql.MySQLError with the given
+// server-side error code. Returns false for nil error, non-driver errors, or
+// driver errors with a different code.
+func IsMySQLErrorCode(err error, code uint16) bool {
+	if err == nil {
+		return false
+	}
+	var mErr *mysql.MySQLError
+	if !errors.As(err, &mErr) {
+		return false
+	}
+	return mErr.Number == code
+}
+
 type Opts struct {
 	Username string
 	Password string
