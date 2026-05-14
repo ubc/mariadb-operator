@@ -211,8 +211,30 @@ func (r *ReplicationConfigClient) changeMaster(ctx context.Context, mariadb *mar
 
 	changeMasterOpts = append(changeMasterOpts, opts...)
 
-	if err := client.ChangeMaster(ctx, changeMasterOpts...); err != nil {
+	err = client.ChangeMaster(ctx, changeMasterOpts...)
+	if err == nil {
+		return nil
+	}
+	// CHANGE MASTER TO can return Error 1201 ("Could not initialize master
+	// info structure for ''") when a previous switchover left residual
+	// slave-channel state on this pod (truncated master.info / relay-log.info
+	// from a partially-completed phase 4-6 sequence). The condition is
+	// recoverable by clearing slave state via RESET SLAVE ALL and retrying
+	// once: the residual files are exactly the state we are about to
+	// overwrite anyway. Field incident: moodle-education-stg-db wedged for
+	// hours after a previous failed switchover left pod-1 with a 0-byte
+	// master.info; the operator looped on this error every reconcile until
+	// the on-disk state was cleared manually.
+	if !sql.IsMySQLErrorCode(err, sql.ErrCodeMasterInfo) {
 		return fmt.Errorf("error changing master: %v", err)
+	}
+	if resetErr := client.ResetAllSlaves(ctx); resetErr != nil {
+		return fmt.Errorf("error changing master (errno %d) and follow-up RESET SLAVE ALL also failed: changeMaster=%v resetSlaveAll=%v",
+			sql.ErrCodeMasterInfo, err, resetErr)
+	}
+	if err := client.ChangeMaster(ctx, changeMasterOpts...); err != nil {
+		return fmt.Errorf("error changing master after RESET SLAVE ALL recovery from errno %d: %v",
+			sql.ErrCodeMasterInfo, err)
 	}
 	return nil
 }
