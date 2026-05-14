@@ -16,14 +16,56 @@ jobs:
     outputs:
       noop: ${{ steps.noop.outputs.should_skip }}
     steps:
+      # Inline replacement for fkirc/skip-duplicate-actions, which is pinned to
+      # Node.js 20 and unmaintained since 2023-10. We only used its paths_ignore
+      # feature (concurrent_skipping and skip_after_successful_duplicate were
+      # disabled), so a small git-diff check is equivalent and removes the
+      # Node 20 deprecation warning.
+      - name: Checkout
+        uses: actions/checkout@v6
+        with:
+          fetch-depth: 0
       - name: Detect no-op changes
         id: noop
-        uses: fkirc/skip-duplicate-actions@v5.3.1
-        with:
-          github_token: ${{ secrets.GITHUB_TOKEN }}
-          paths_ignore: '["*.md","*.md.gotmpl",".github/**","docs/**","examples/**"]'
-          concurrent_skipping: false
-          skip_after_successful_duplicate: false
+        env:
+          EVENT_NAME: ${{ github.event_name }}
+          PR_BASE_SHA: ${{ github.event.pull_request.base.sha }}
+          PR_HEAD_SHA: ${{ github.event.pull_request.head.sha }}
+          PUSH_BEFORE: ${{ github.event.before }}
+          PUSH_AFTER: ${{ github.sha }}
+        run: |
+          set -euo pipefail
+          if [ "$EVENT_NAME" = "pull_request" ]; then
+            base="$PR_BASE_SHA"
+            head="$PR_HEAD_SHA"
+          else
+            base="$PUSH_BEFORE"
+            head="$PUSH_AFTER"
+          fi
+          # New branch push has base == 0000...000; nothing to diff against, so
+          # run all jobs to be safe.
+          if [ "$base" = "0000000000000000000000000000000000000000" ] || [ -z "$base" ]; then
+            echo "should_skip=false" >> "$GITHUB_OUTPUT"
+            echo "First push / new branch — running all jobs."
+            exit 0
+          fi
+          changed=$(git diff --name-only "$base" "$head" || true)
+          echo "Changed files between $base..$head:"
+          echo "$changed"
+          # Same ignore patterns as the previous fkirc/skip-duplicate-actions config:
+          #   *.md           — markdown anywhere
+          #   *.md.gotmpl    — gotmpl markdown anywhere
+          #   .github/**     — workflow + GH config
+          #   docs/**        — docs tree
+          #   examples/**    — examples tree
+          meaningful=$(echo "$changed" | grep -vE '(\.md(\.gotmpl)?$|^\.github/|^docs/|^examples/)' || true)
+          if [ -n "$changed" ] && [ -z "$meaningful" ]; then
+            echo "All changes are in ignored paths — skipping downstream jobs."
+            echo "should_skip=true" >> "$GITHUB_OUTPUT"
+          else
+            echo "Meaningful changes detected — running downstream jobs."
+            echo "should_skip=false" >> "$GITHUB_OUTPUT"
+          fi
 
   lint:
     name: Lint
