@@ -1,8 +1,11 @@
 package sql
 
 import (
+	"errors"
+	"fmt"
 	"testing"
 
+	"github.com/go-sql-driver/mysql"
 	"github.com/google/go-cmp/cmp"
 	mariadbv1alpha1 "github.com/mariadb-operator/mariadb-operator/v26/api/v1alpha1"
 	"k8s.io/utils/ptr"
@@ -211,6 +214,75 @@ func TestRequireQuery(t *testing.T) {
 			}
 			if diff := cmp.Diff(tt.wantQuery, gotQuery); diff != "" {
 				t.Errorf("unexpected bundle content (-want +got):\n%s", diff)
+			}
+		})
+	}
+}
+
+func TestIsMySQLErrorCode(t *testing.T) {
+	t.Parallel()
+	tests := []struct {
+		name string
+		err  error
+		code uint16
+		want bool
+	}{
+		{
+			name: "nil error returns false",
+			err:  nil,
+			code: ErrCodeMasterInfo,
+			want: false,
+		},
+		{
+			name: "non-driver error returns false",
+			err:  errors.New("connection refused"),
+			code: ErrCodeMasterInfo,
+			want: false,
+		},
+		{
+			name: "wrapped non-driver error returns false",
+			err:  fmt.Errorf("outer: %w", errors.New("inner")),
+			code: ErrCodeMasterInfo,
+			want: false,
+		},
+		{
+			name: "driver error with matching code returns true",
+			err:  &mysql.MySQLError{Number: 1201, Message: "Could not initialize master info structure for ''"},
+			code: ErrCodeMasterInfo,
+			want: true,
+		},
+		{
+			name: "driver error with non-matching code returns false",
+			err:  &mysql.MySQLError{Number: 1062, Message: "Duplicate entry"},
+			code: ErrCodeMasterInfo,
+			want: false,
+		},
+		{
+			name: "driver error wrapped via fmt.Errorf %w with matching code returns true",
+			err:  fmt.Errorf("outer wrapper: %w", &mysql.MySQLError{Number: 1201, Message: "..."}),
+			code: ErrCodeMasterInfo,
+			want: true,
+		},
+		{
+			name: "driver error wrapped multiple levels via fmt.Errorf %w returns true",
+			err: fmt.Errorf("level 3: %w",
+				fmt.Errorf("level 2: %w",
+					&mysql.MySQLError{Number: 1201, Message: "..."})),
+			code: ErrCodeMasterInfo,
+			want: true,
+		},
+		{
+			name: "driver error wrapped via fmt.Errorf %v (loses chain) returns false",
+			err:  fmt.Errorf("outer wrapper: %v", &mysql.MySQLError{Number: 1201, Message: "..."}),
+			code: ErrCodeMasterInfo,
+			want: false,
+		},
+	}
+	for _, tc := range tests {
+		t.Run(tc.name, func(t *testing.T) {
+			got := IsMySQLErrorCode(tc.err, tc.code)
+			if got != tc.want {
+				t.Errorf("IsMySQLErrorCode(%v, %d) = %v, want %v", tc.err, tc.code, got, tc.want)
 			}
 		})
 	}

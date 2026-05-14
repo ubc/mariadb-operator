@@ -498,3 +498,39 @@ func TestReplicationReconcile_RefreshesRolesBeforeSwitchover(_ *testing.T) {
 	// Integration-test only; documented here for design record.
 	// See pkg/controller/replication/controller.go: Replication.Reconcile dispatch order.
 }
+
+// TestChangeMaster_RecoversFromMasterInfoErrno1201 documents the bug:
+//
+//	When a previous switchover completes phase 4 (configureNewPrimary runs
+//	RESET MASTER / RESET SLAVE ALL on the new primary) but then fails partway
+//	through phases 5 or 6, the *old* primary can be left with truncated
+//	master.info / relay-log.info files in its data dir. On the next reconcile
+//	the operator hits changePrimaryToReplica again and runs ConfigureReplica
+//	on the old primary, which eventually issues CHANGE MASTER TO with the
+//	default (empty) connection name. MariaDB rejects this with:
+//
+//	    Error 1201 (HY000): Could not initialize master info structure for '';
+//	    more error messages can be found in the MariaDB error log
+//
+//	because the in-memory master_info structure cannot be rebuilt from the
+//	residual on-disk state. The operator's switchover state machine then
+//	loops on this error every reconcile, indefinitely. Field incident:
+//	moodle-education-stg-db, 2026-05-14. Manual recovery required executing
+//	`STOP SLAVE; RESET SLAVE ALL;` on the affected pod between operator
+//	reconciles to clear the slave-channel state.
+//
+//	Fix: when changeMaster returns Error 1201, the operator now calls
+//	RESET SLAVE ALL on the same client and retries CHANGE MASTER TO once.
+//	The retry is safe because the residual master.info / relay-log.info
+//	state is exactly what the in-flight ConfigureReplica is about to
+//	overwrite anyway; clearing it removes the corruption barrier.
+//
+//	The code path lives in pkg/controller/replication/config.go:changeMaster.
+//	Because exercising it requires a live SQL connection that emits a
+//	specific server-side error code, it is covered by integration tests.
+//	The pure error-classifier (sql.IsMySQLErrorCode) is unit-tested in
+//	pkg/sql/sql_test.go: TestIsMySQLErrorCode.
+func TestChangeMaster_RecoversFromMasterInfoErrno1201(_ *testing.T) {
+	// Integration-test only; documented here for design record.
+	// See pkg/controller/replication/config.go: changeMaster (errno 1201 branch).
+}
