@@ -63,31 +63,16 @@ func (p *ReplicationProbe) Liveness(w http.ResponseWriter, r *http.Request) {
 		return
 	}
 	if isReplica {
-		status, err := sqlClient.ReplicaStatus(sqlCtx, p.livenessLogger)
-		if err != nil {
-			p.livenessLogger.Error(err, "error getting replica status")
-			p.responseWriter.WriteErrorf(w, "error getting replica status: %v", err)
-			return
-		}
-
-		replicaIORunning := ptr.Deref(status.SlaveIORunning, false)
-		if !replicaIORunning {
-			p.livenessLogger.Error(nil, "Replica IO thread not running")
-			p.responseWriter.WriteError(w, "Replica IO thread not running")
-			return
-		}
-		replicaSQLRunning := ptr.Deref(status.SlaveSQLRunning, false)
-		if !replicaSQLRunning {
-			p.livenessLogger.Error(nil, "Replica SQL thread not running")
-			p.responseWriter.WriteError(w, "Replica SQL thread not running")
-			return
-		}
-
-		p.livenessLogger.V(1).Info(
-			"Replica thread running status",
-			"Slave_IO_Running", replicaIORunning,
-			"Slave_SQL_Running", replicaSQLRunning,
-		)
+		// NOTE(ubc-fork): Liveness must NOT depend on replication thread state.
+		// A stopped SQL/IO thread — e.g. during operator-driven STOP SLAVE /
+		// CHANGE MASTER reconfiguration on startup, a transient replication stop,
+		// or replica lag — is a *readiness* concern (handled by Readiness below),
+		// not a reason to kill mariadbd. Failing liveness here makes kubelet
+		// restart mariadbd, which re-triggers replication reconfiguration and
+		// stops the threads again -> CrashLoopBackOff. The IsReplicationReplica()
+		// check above already proves mariadbd is alive and responsive, which is
+		// all liveness should assert.
+		p.livenessLogger.V(1).Info("Replica is alive")
 		p.responseWriter.WriteOK(w, nil)
 		return
 	}
