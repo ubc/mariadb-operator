@@ -148,6 +148,14 @@ type ReplicaRecovery struct {
 	// +optional
 	// +operator-sdk:csv:customresourcedefinitions:type=spec
 	MinHealthyDuration *metav1.Duration `json:"minHealthyDuration,omitempty"`
+	// ReconnectOnAuthError, when true, makes the operator re-issue CHANGE MASTER on a
+	// replica whose IO thread is failing authentication (error 1045) for longer than
+	// ErrorDurationThreshold, re-syncing the repl password from the secret. This works
+	// independently of Enabled and does not trigger a backup rebuild.
+	// It defaults to false.
+	// +optional
+	// +operator-sdk:csv:customresourcedefinitions:type=spec
+	ReconnectOnAuthError bool `json:"reconnectOnAuthError,omitempty"`
 }
 
 // ReplicaReplication is the replication configuration and operation parameters for the replicas.
@@ -406,6 +414,17 @@ func (m *MariaDB) IsReplicaRecoveryEnabled() bool {
 	replication := ptr.Deref(m.Spec.Replication, Replication{})
 	recovery := ptr.Deref(replication.Replica.ReplicaRecovery, ReplicaRecovery{})
 	return recovery.Enabled
+}
+
+// IsReplicaReconnectOnAuthErrorEnabled indicates whether the operator should re-issue
+// CHANGE MASTER on a replica stuck on a repl auth error (1045).
+func (m *MariaDB) IsReplicaReconnectOnAuthErrorEnabled() bool {
+	if !m.IsReplicationEnabled() {
+		return false
+	}
+	replication := ptr.Deref(m.Spec.Replication, Replication{})
+	recovery := ptr.Deref(replication.Replica.ReplicaRecovery, ReplicaRecovery{})
+	return recovery.ReconnectOnAuthError
 }
 
 // IsRecoveringReplicas indicates that a replica is being recovered.
