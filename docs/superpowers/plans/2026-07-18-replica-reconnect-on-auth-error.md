@@ -388,5 +388,5 @@ git commit -m "chore: regenerate CRDs and API reference for reconnectOnAuthError
 1. Open a PR from `feat/replica-reconnect-on-auth-error`; confirm CI green (build, unit, integration, helm, Artifacts).
 2. Merge to `main`; CI publishes `ghcr.io/ubc/mariadb-operator:<sha>` and the fork charts.
 3. `helm upgrade` the appcloud operator to the new image + chart (see memory `mariadb-operator-appcloud-deploy`); expect the fleet-wide agent roll.
-4. Set `spec.replication.replica.recovery.reconnectOnAuthError: true` on the 7 hotcrp DBs (in `k8s-config`) so future desyncs self-heal.
+4. Set `spec.replication.replica.recovery: { enabled: false, reconnectOnAuthError: true }` on the 7 hotcrp DBs (in `k8s-config`) so future desyncs self-heal. NOTE: `enabled` is a required CRD field — the manifest MUST include it (`false` keeps the backup-rebuild recovery off); omitting it is rejected at apply time.
 5. (Optional) Verify by forcing a controlled desync on a low-risk DB (e.g. `hotcrp-test-db`) and confirming the operator re-syncs within the threshold window.

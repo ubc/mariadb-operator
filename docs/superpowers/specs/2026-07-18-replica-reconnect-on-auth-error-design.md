@@ -72,14 +72,18 @@ func (m *MariaDB) IsReplicaReconnectOnAuthErrorEnabled() bool {
 }
 ```
 
-Enabling on a DB is then a single field:
+Enabling on a DB requires the flag **plus** `enabled` — `ReplicaRecovery.Enabled` is a
+required CRD field (`+kubebuilder:validation:Required`), so the API server rejects a
+`recovery` object that omits it. Auth-resync itself does NOT gate on `enabled`, so set it
+`false` to keep the backup-rebuild recovery off while turning on auth-resync:
 
 ```yaml
 spec:
   replication:
     replica:
       recovery:
-        reconnectOnAuthError: true   # no enabled/bootstrapFrom needed
+        enabled: false               # required field; backup-rebuild recovery stays off
+        reconnectOnAuthError: true   # bootstrapFrom NOT needed
 ```
 
 ### 2. Detection — sustained 1045, reusing the existing threshold
@@ -194,14 +198,19 @@ Table-driven unit tests (following `pkg/controller/replication/switchover_test.g
 4. Merge to `main`; CI publishes `ghcr.io/ubc/mariadb-operator:<sha>` and the fork charts.
 5. `helm upgrade` the appcloud operator to the new image (see memory
    `mariadb-operator-appcloud-deploy`).
-6. Set `spec.replication.replica.recovery.reconnectOnAuthError: true` on the 7 hotcrp DBs
+6. Set `recovery: { enabled: false, reconnectOnAuthError: true }` on the 7 hotcrp DBs (both
+   keys — `enabled` is a required CRD field; `false` keeps backup recovery off)
    (in `k8s-config`), so a future desync self-heals.
 
 ## Risks
 
 - **Reconfigure churn** if a replica is genuinely mis-credentialed at the *secret* level
-  (secret itself wrong): the operator would re-`CHANGE MASTER` every reconcile-after-threshold
-  and keep failing 1045. Mitigation: the 5m threshold rate-limits it; it does no harm beyond
-  log noise and repeated STOP/START SLAVE on an already-broken replica. Acceptable.
+  (secret itself wrong): errno stays 1045, so `LastErrorTransitionTime` is *preserved* (it
+  only moves on an error-state transition) and `time.Since > threshold` stays true — so the
+  re-`CHANGE MASTER` fires on **every reconcile**, not once per threshold window. Still
+  benign: a 1045 IO thread has no relay-log apply to interrupt, the secret read is cached,
+  and it does no harm beyond log noise + repeated STOP/START SLAVE on an already-broken
+  replica. If the noise ever matters, add a per-pod cooldown or a success-path
+  `RequeueAfter`. Acceptable for now.
 - **Fork divergence** from upstream. Mitigation: the change is small, opt-in, and
   upstreamable; propose upstream after it soaks.
