@@ -181,7 +181,7 @@ func (r *ReplicationReconciler) reconcileSwitchover(ctx context.Context, req *Re
 	}
 
 	for _, p := range phases {
-		if err := p.reconcile(ctx, req, logger); err != nil {
+		if err := p.reconcile(ctx, req, logger.WithValues("phase", p.name)); err != nil {
 			if apierrors.IsNotFound(err) {
 				return err
 			}
@@ -332,7 +332,8 @@ func (r *ReplicationReconciler) waitForReplicaSync(ctx context.Context, req *Rec
 				logger.Info("Replica has no slave configured, reconnecting to current primary before sync wait", "replica", i)
 				r.recorder.Eventf(req.mariadb, nil, corev1.EventTypeNormal, mariadbv1alpha1.ReasonReplicationReplicaConn,
 					mariadbv1alpha1.ActionReconciling, "Reconnecting replica '%d' to current primary for sync", i)
-				if err := r.replConfigClient.ConfigureReplica(ctx, req.mariadb, replClient,
+				topology := r.topologyManager.TopologyForMariaDB(req.mariadb, logger.WithValues("replica", i))
+				if err := topology.ConfigureReplica(ctx, replClient,
 					*req.mariadb.Status.CurrentPrimaryPodIndex, WithResetMaster(false)); err != nil {
 					return fmt.Errorf("error reconnecting replica '%d' for sync: %v", i, err)
 				}
@@ -430,11 +431,12 @@ func (r *ReplicationReconciler) configureNewPrimary(ctx context.Context, req *Re
 		return fmt.Errorf("error getting new primary client: %v", err)
 	}
 
-	logger.Info("Configuring new primary")
 	r.recorder.Eventf(req.mariadb, nil, corev1.EventTypeNormal, mariadbv1alpha1.ReasonReplicationPrimaryNew,
 		mariadbv1alpha1.ActionReconciling, "Configuring new primary at index '%d'", newPrimary)
 
-	if err := r.replConfigClient.ConfigurePrimary(ctx, req.mariadb, newPrimaryClient); err != nil {
+	topology := r.topologyManager.TopologyForMariaDB(req.mariadb, logger)
+
+	if err := topology.ConfigurePrimary(ctx, newPrimaryClient); err != nil {
 		return fmt.Errorf("error configuring new primary vars: %v", err)
 	}
 	return nil
@@ -491,10 +493,9 @@ func (r *ReplicationReconciler) connectReplicasToNewPrimary(ctx context.Context,
 			if err != nil {
 				return fmt.Errorf("error getting replica '%d' client: %v", i, err)
 			}
+			topology := r.topologyManager.TopologyForMariaDB(req.mariadb, logger.WithValues("replica", i))
 
-			logger.V(1).Info("Connecting replica to new primary", "replica", i)
-
-			if err := r.replConfigClient.ConfigureReplica(ctx, req.mariadb, replClient, newPrimary, replicaOpts...); err != nil {
+			if err := topology.ConfigureReplica(ctx, replClient, newPrimary, replicaOpts...); err != nil {
 				return fmt.Errorf("error configuring replica '%d': %v", i, err)
 			}
 
@@ -549,10 +550,10 @@ func (r *ReplicationReconciler) changePrimaryToReplica(ctx context.Context, req 
 		return fmt.Errorf("error unlocking primary: %v", err)
 	}
 
-	logger.Info("Configuring primary to be a replica")
-	return r.replConfigClient.ConfigureReplica(
+	topology := r.topologyManager.TopologyForMariaDB(req.mariadb, logger)
+
+	return topology.ConfigureReplica(
 		ctx,
-		req.mariadb,
 		currentPrimaryClient,
 		newPrimary,
 		replicaOpts...,
