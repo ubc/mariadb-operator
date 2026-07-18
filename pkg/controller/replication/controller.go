@@ -263,6 +263,22 @@ func (r *ReplicationReconciler) ReconcileReplicationInPod(ctx context.Context, r
 	if !opts.forceReplicaConfiguration {
 		role, ok := replRoles[pod]
 		if ok && role == mariadbv1alpha1.ReplicationRoleReplica {
+			// Self-heal a replica stuck on repl auth error (1045): the normal role-gated
+			// reconcile never re-applies its master credentials, so a repl-password
+			// divergence leaves it broken forever. When opted in, re-issue CHANGE MASTER
+			// with the current secret (lightweight: no RESET MASTER).
+			if !r.podNeedsAuthResync(req.mariadb, pod) {
+				return ctrl.Result{}, nil
+			}
+			logger.Info("Replica IO auth error (1045) detected, re-syncing master credentials", "pod", pod)
+			client, err := req.replClientSet.clientForIndex(ctx, podIndex)
+			if err != nil {
+				logger.V(1).Info("error getting replica client", "err", err, "pod", pod)
+				return ctrl.Result{RequeueAfter: 5 * time.Second}, nil
+			}
+			if err := topology.ConfigureReplica(ctx, client, primaryPodIndex, WithResetMaster(false)); err != nil {
+				return ctrl.Result{}, fmt.Errorf("error re-syncing replica credentials: %v", err)
+			}
 			return ctrl.Result{}, nil
 		}
 	}
