@@ -136,7 +136,14 @@ jobs:
 
       - name: Test install
         if: steps.list-changed.outputs.changed == 'true'
-        run: ct install --config $CT_CONFIG --helm-extra-set-args "--set=crds.enabled=true"
+        run: |
+          # The chart's default image tag is the chart appVersion (e.g. 26.6.0+ubc.1), which
+          # is an invalid OCI reference (Docker tags can't contain '+') and is not the image
+          # built/loaded above. Point ct install at the locally-built image, which
+          # make docker-build/docker-load tags as IMG_NAME:VERSION.
+          IMG_NAME=$(grep -E '^IMG_NAME \?=' Makefile | awk '{print $3}')
+          VERSION=$(grep -E '^VERSION \?=' Makefile | awk '{print $3}')
+          ct install --config $CT_CONFIG --helm-extra-set-args "--set=crds.enabled=true --set=image.repository=$IMG_NAME --set=image.tag=$VERSION --set=webhook.image.repository=$IMG_NAME --set=webhook.image.tag=$VERSION --set=certController.image.repository=$IMG_NAME --set=certController.image.tag=$VERSION"
 
   release:
     runs-on: ubuntu-latest
