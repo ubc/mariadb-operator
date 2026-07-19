@@ -5362,6 +5362,14 @@ spec:
                               applied after START SLAVE, which can otherwise be missed by a single-shot status check.
                               It defaults to 30 seconds.
                             type: string
+                          reconnectOnAuthError:
+                            description: |-
+                              ReconnectOnAuthError, when true, makes the operator re-issue CHANGE MASTER on a
+                              replica whose IO thread is failing authentication (error 1045) for longer than
+                              ErrorDurationThreshold, re-syncing the repl password from the secret. This works
+                              independently of Enabled and does not trigger a backup rebuild.
+                              It defaults to false.
+                            type: boolean
                         required:
                         - enabled
                         type: object
