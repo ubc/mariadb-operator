@@ -50,9 +50,14 @@ func shouldReconcileSwitchover(mdb *mariadbv1alpha1.MariaDB) bool {
 // CrashLoopBackOff — the wedge mode where the live check would itself fail with
 // "invalid connection".
 //
+// The IO thread is only checked when the current primary is ready: during a failover every replica's
+// IO thread fails to reach the dead primary (errno 2003/2013), which is expected and must not block the
+// promotion. When the primary is ready, an IO error is only fatal if the IO thread has stopped; a thread
+// that is still connecting retries on its own.
+//
 // Returns nil when the status is missing, the target is the current primary
 // (nothing to check), or the target's last observed status had errno == 0.
-func targetReplicaError(mdb *mariadbv1alpha1.MariaDB) error {
+func targetReplicaError(mdb *mariadbv1alpha1.MariaDB, currentPrimaryReady bool) error {
 	if mdb.Status.Replication == nil || mdb.Status.Replication.Replicas == nil {
 		return nil
 	}
@@ -77,14 +82,6 @@ func targetReplicaError(mdb *mariadbv1alpha1.MariaDB) error {
 			podName, errno, msg,
 		)
 	}
-	if errno := ptr.Deref(status.LastIOErrno, 0); errno != 0 {
-		msg := ptr.Deref(status.LastIOError, "")
-		return fmt.Errorf(
-			"switchover target replica '%s' has unrecoverable IO thread error (errno %d): %s; "+
-				"recover the replica before retrying the switchover",
-			podName, errno, msg,
-		)
-	}
 	// Catch the no-errno-but-thread-stopped case: a replica whose SQL thread
 	// was halted by `STOP SLAVE SQL_THREAD` (or by `slave_skip_errors` after
 	// a prior incident) reports Slave_SQL_Running=No with Last_SQL_Errno=0.
@@ -100,14 +97,25 @@ func targetReplicaError(mdb *mariadbv1alpha1.MariaDB) error {
 			podName,
 		)
 	}
-	if !ptr.Deref(status.SlaveIORunning, true) {
+	if !currentPrimaryReady {
+		return nil
+	}
+	if ptr.Deref(status.SlaveIORunning, true) {
+		return nil
+	}
+	if errno := ptr.Deref(status.LastIOErrno, 0); errno != 0 {
+		msg := ptr.Deref(status.LastIOError, "")
 		return fmt.Errorf(
-			"switchover target replica '%s' IO thread is not running (Slave_IO_Running=No); "+
+			"switchover target replica '%s' has unrecoverable IO thread error (errno %d): %s; "+
 				"recover the replica before retrying the switchover",
-			podName,
+			podName, errno, msg,
 		)
 	}
-	return nil
+	return fmt.Errorf(
+		"switchover target replica '%s' IO thread is not running (Slave_IO_Running=No); "+
+			"recover the replica before retrying the switchover",
+		podName,
+	)
 }
 
 func (r *ReplicationReconciler) reconcileSwitchover(ctx context.Context, req *ReconcileRequest, switchoverLogger logr.Logger) error {
@@ -135,7 +143,7 @@ func (r *ReplicationReconciler) reconcileSwitchover(ctx context.Context, req *Re
 	// gtid_current_pos, regardless of how long we wait. Field incidents on
 	// moodle-education-{stg,prod}-db hit this exact pattern with errno 1062
 	// on mdl_task_log, leaving both clusters wedged for 5+ days.
-	if err := targetReplicaError(req.mariadb); err != nil {
+	if err := targetReplicaError(req.mariadb, req.currentPrimaryReady); err != nil {
 		r.recorder.Eventf(req.mariadb, nil, corev1.EventTypeWarning, mariadbv1alpha1.ReasonReplicationReplicaSyncErr,
 			mariadbv1alpha1.ReasonReplicationReplicaSyncErr, "Refusing switchover: %v", err)
 		return err

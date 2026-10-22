@@ -179,10 +179,11 @@ func TestTargetReplicaError_GuardsAgainstWedgedTarget(t *testing.T) {
 	primaryIndex1 := 1
 
 	tests := []struct {
-		name      string
-		mdb       *mariadbv1alpha1.MariaDB
-		wantErr   bool
-		wantMatch string
+		name        string
+		mdb         *mariadbv1alpha1.MariaDB
+		primaryDown bool
+		wantErr     bool
+		wantMatch   string
 	}{
 		{
 			name: "nil replication status returns nil",
@@ -287,8 +288,9 @@ func TestTargetReplicaError_GuardsAgainstWedgedTarget(t *testing.T) {
 						Replicas: map[string]mariadbv1alpha1.ReplicaStatus{
 							"moodle-education-stg-db-1": {
 								ReplicaStatusVars: mariadbv1alpha1.ReplicaStatusVars{
-									LastIOErrno: ptr.To(1236),
-									LastIOError: ptr.To("Got fatal error 1236 from master"),
+									LastIOErrno:    ptr.To(1236),
+									LastIOError:    ptr.To("Got fatal error 1236 from master"),
+									SlaveIORunning: ptr.To(false),
 								},
 							},
 						},
@@ -355,6 +357,88 @@ func TestTargetReplicaError_GuardsAgainstWedgedTarget(t *testing.T) {
 			wantMatch: "IO thread is not running",
 		},
 		{
+			name: "IO errno 2003 while the IO thread is still connecting returns nil",
+			mdb: &mariadbv1alpha1.MariaDB{
+				ObjectMeta: mdbObjectMeta,
+				Spec: mariadbv1alpha1.MariaDBSpec{
+					Replication: &mariadbv1alpha1.Replication{ReplicationSpec: mariadbv1alpha1.ReplicationSpec{
+						Primary: mariadbv1alpha1.PrimaryReplication{PodIndex: &primaryIndex1}},
+					},
+				},
+				Status: mariadbv1alpha1.MariaDBStatus{
+					CurrentPrimaryPodIndex: &primaryIndex0,
+					Replication: &mariadbv1alpha1.ReplicationStatus{
+						Replicas: map[string]mariadbv1alpha1.ReplicaStatus{
+							"moodle-education-stg-db-1": {
+								ReplicaStatusVars: mariadbv1alpha1.ReplicaStatusVars{
+									LastIOErrno:     ptr.To(2003),
+									LastIOError:     ptr.To("Can't connect to server (111 \"Connection refused\")"),
+									SlaveIORunning:  ptr.To(true),
+									SlaveSQLRunning: ptr.To(true),
+								},
+							},
+						},
+					},
+				},
+			},
+		},
+		{
+			name: "failover: IO thread stopped on errno 2003 returns nil when the current primary is down",
+			mdb: &mariadbv1alpha1.MariaDB{
+				ObjectMeta: mdbObjectMeta,
+				Spec: mariadbv1alpha1.MariaDBSpec{
+					Replication: &mariadbv1alpha1.Replication{ReplicationSpec: mariadbv1alpha1.ReplicationSpec{
+						Primary: mariadbv1alpha1.PrimaryReplication{PodIndex: &primaryIndex1}},
+					},
+				},
+				Status: mariadbv1alpha1.MariaDBStatus{
+					CurrentPrimaryPodIndex: &primaryIndex0,
+					Replication: &mariadbv1alpha1.ReplicationStatus{
+						Replicas: map[string]mariadbv1alpha1.ReplicaStatus{
+							"moodle-education-stg-db-1": {
+								ReplicaStatusVars: mariadbv1alpha1.ReplicaStatusVars{
+									LastIOErrno:     ptr.To(2003),
+									LastIOError:     ptr.To("Can't connect to server (111 \"Connection refused\")"),
+									SlaveIORunning:  ptr.To(false),
+									SlaveSQLRunning: ptr.To(true),
+								},
+							},
+						},
+					},
+				},
+			},
+			primaryDown: true,
+		},
+		{
+			name: "failover: SQL errno 1062 is still refused when the current primary is down",
+			mdb: &mariadbv1alpha1.MariaDB{
+				ObjectMeta: mdbObjectMeta,
+				Spec: mariadbv1alpha1.MariaDBSpec{
+					Replication: &mariadbv1alpha1.Replication{ReplicationSpec: mariadbv1alpha1.ReplicationSpec{
+						Primary: mariadbv1alpha1.PrimaryReplication{PodIndex: &primaryIndex1}},
+					},
+				},
+				Status: mariadbv1alpha1.MariaDBStatus{
+					CurrentPrimaryPodIndex: &primaryIndex0,
+					Replication: &mariadbv1alpha1.ReplicationStatus{
+						Replicas: map[string]mariadbv1alpha1.ReplicaStatus{
+							"moodle-education-stg-db-1": {
+								ReplicaStatusVars: mariadbv1alpha1.ReplicaStatusVars{
+									LastSQLErrno:    ptr.To(1062),
+									LastSQLError:    ptr.To("Duplicate entry"),
+									SlaveIORunning:  ptr.To(false),
+									SlaveSQLRunning: ptr.To(false),
+								},
+							},
+						},
+					},
+				},
+			},
+			primaryDown: true,
+			wantErr:     true,
+			wantMatch:   "unrecoverable SQL thread error (errno 1062)",
+		},
+		{
 			name: "nil thread-running fields default to true (uninitialized replica)",
 			mdb: &mariadbv1alpha1.MariaDB{
 				ObjectMeta: mdbObjectMeta,
@@ -412,7 +496,7 @@ func TestTargetReplicaError_GuardsAgainstWedgedTarget(t *testing.T) {
 
 	for _, tc := range tests {
 		t.Run(tc.name, func(t *testing.T) {
-			err := targetReplicaError(tc.mdb)
+			err := targetReplicaError(tc.mdb, !tc.primaryDown)
 			if tc.wantErr {
 				if err == nil {
 					t.Fatalf("expected error containing %q, got nil", tc.wantMatch)
