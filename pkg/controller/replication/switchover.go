@@ -359,6 +359,19 @@ func (r *ReplicationReconciler) waitForReplicaSync(ctx context.Context, req *Rec
 
 			if err := replClient.WaitForReplicaGtid(ctx, primaryGtid, syncTimeout); err != nil {
 				logger.Error(err, "Error waiting for GTID in replica", "gtid", primaryGtid, "replica", i)
+				// DIAGNOSTIC (temporary, CI-only branch): dump the replica's replication state on sync timeout.
+				if st, serr := replClient.ReplicaStatus(ctx, logger); serr != nil {
+					logger.Info("DIAG replica status error", "replica", i, "err", serr)
+				} else {
+					slavePos, _ := replClient.SystemVariable(ctx, "gtid_slave_pos")
+					logger.Info("DIAG replica status on sync timeout", "replica", i,
+						"ioRunning", ptr.Deref(st.SlaveIORunning, false), "sqlRunning", ptr.Deref(st.SlaveSQLRunning, false),
+						"lastIOErrno", ptr.Deref(st.LastIOErrno, 0), "lastIOError", ptr.Deref(st.LastIOError, ""),
+						"lastSQLErrno", ptr.Deref(st.LastSQLErrno, 0), "lastSQLError", ptr.Deref(st.LastSQLError, ""),
+						"gtidIOPos", ptr.Deref(st.GtidIOPos, ""), "gtidCurrentPos", ptr.Deref(st.GtidCurrentPos, ""),
+						"usingGtid", ptr.Deref(st.UsingGtid, ""), "secondsBehind", ptr.Deref(st.SecondsBehindMaster, -1),
+						"gtidSlavePos", slavePos)
+				}
 				r.recorder.Eventf(req.mariadb, nil, corev1.EventTypeWarning, mariadbv1alpha1.ReasonReplicationReplicaSyncErr,
 					mariadbv1alpha1.ReasonReplicationReplicaSyncErr, "Error waiting for GTID '%s' in replica '%d': %v", primaryGtid, i, err)
 				return err

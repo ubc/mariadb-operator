@@ -210,7 +210,8 @@ jobs:
 
       - name: Run basic integration tests
         if: ${{ steps.test.outputs.type == 'basic' }}
-        run: make test-int-basic
+        # DIAGNOSTIC (temporary): only the specs that failed on the rebased fork, run twice.
+        run: make test-int TEST_TIMEOUT=2h TEST_ARGS='--focus="should resize PVCs|should move semi-sync on failover|should scale out" --repeat=1'
 
       - name: Run integration tests
         if: ${{ steps.test.outputs.type == 'full' }}
